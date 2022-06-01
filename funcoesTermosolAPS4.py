@@ -156,7 +156,10 @@ def gauss(ite, tol, K, F):
                 if k != j:
                     soma += (K[k][j]*xs[j])
             
-            xs[k] = (F[k] - soma)/K[k][k]
+            if K[k][k] == 0:
+                xs[k] = 0
+            else:
+                xs[k] = (F[k] - soma)/K[k][k]
 
         for g in range(0, size):
             if xs[g] == 0:
@@ -216,3 +219,116 @@ def jacobi(ite, tol, K, F):
             lasts[x] = xs[x]
 
     return xs, contador
+
+def rigidez(nm, Inc, N, nn, R, F):
+    import math
+    import numpy as np
+
+    elementos = {}
+
+    for n in range(1, nm+1):
+        elementos[str(n)] = {}
+
+    for n in range(1, nm+1):
+        elementos[str(n)]['INCIDENCIA'] = '{}-{}'.format(Inc[n-1][0], Inc[n-1][1])
+
+    for elemento, valores in elementos.items():
+        f = int(valores['INCIDENCIA'][0:1]) - 1
+        t = int(valores['INCIDENCIA'][4:5]) - 1
+
+        x1 = N[0][f]
+        y1 = N[1][f]
+        x2 = N[0][t]
+        y2 = N[1][t]
+
+        L = math.sqrt((x2-x1)**2 + (y2-y1)**2)
+        elementos[elemento]['TAMANHO'] = L
+        elementos[elemento]['SEN'] = (y2-y1)/L
+        elementos[elemento]['COS'] = (x2-x1)/L
+
+    for n in range(0, nm):
+        elementos[str(n+1)]['AREA'] = Inc[n][3]
+
+    for n in range(0, nm):
+        elementos[str(n+1)]['YOUNG'] = int(Inc[n][2])
+
+    for n in range(0, nn):
+        g = n+1
+        g1 = (g*2)-1
+        g2 = g*2
+        elementos[str(n+1)]['LIBERDADE'] = [g1, g2]
+
+    K_list = []
+    K_indexes = []
+    for n in range(0, nm):
+        cos = elementos[str(n+1)]['COS']
+        sen = elementos[str(n+1)]['SEN']
+        youngs = elementos[str(n+1)]['YOUNG']
+        area = elementos[str(n+1)]['AREA']
+        tamanho = elementos[str(n+1)]['TAMANHO']
+
+        inc1 = elementos[str(n+1)]['INCIDENCIA'][0:1]
+        inc2 = elementos[str(n+1)]['INCIDENCIA'][4:5]
+        
+        g1 = elementos[inc1]['LIBERDADE']
+        g2 = elementos[inc2]['LIBERDADE']
+
+        idxs = [g1[0], g1[1], g2[0], g2[1]]
+        K_indexes.append(idxs)
+
+        K = [[cos**2, cos*sen, -1*(cos**2), -1*(cos*sen)],
+             [cos*sen, sen**2, -1*(cos*sen), -1*(sen**2)],
+             [-1*(cos**2), -1*(cos*sen), cos**2, cos*sen],
+             [-1*(cos*sen), -1*(sen**2), cos*sen, sen**2]]
+
+        c = int((youngs*area)/tamanho)
+
+
+        kl = []
+        kll = []
+        for i in range(0, len(K)):
+            for j in range(0, len(K)):
+                kl.append(c*K[i][j])
+
+            kll.append(kl)
+            kl = []
+        K_list.append(kll)
+
+    gl = nn*2
+    kg = np.zeros((gl, gl))
+
+    for i in range(0, gl):
+        for j in range(0, gl):
+            
+            soma = 0
+            for k in range(0, nm):
+                if ((i+1) in K_indexes[k] and (j+1) in K_indexes[k]):
+                    idx1 = K_indexes[k].index(i+1)
+                    idx2 = K_indexes[k].index(j+1)
+                    soma += K_list[k][idx1][idx2]
+
+            kg[i][j] = soma
+
+    ## FORÇAS 
+
+    mF = []
+
+    for i in range(0, nn*2):
+        mF.append(F[i][0])
+
+    gauss_matrix = []
+    gauss_forces = []
+    for n in range(0, gl):
+        if n not in R:
+            gauss_forces.append(mF[n])
+
+            l = []
+            for i in range(0, gl):
+                if i not in R:
+                    l.append(kg[n][i])
+
+            gauss_matrix.append(l)
+
+    xs, contador = gauss(3000, 1e-7, gauss_matrix, gauss_forces)
+
+    return xs
