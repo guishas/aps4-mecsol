@@ -1,4 +1,4 @@
-from funcoesTermosolAPS4 import importa, plota, geraSaida, rigidez
+from funcoesTermosolAPS4 import importa, internas, plota, geraSaida, rigidez, apoio, deformacao, tensao, internas, novos_nos
 import math
 import numpy as np
 
@@ -13,25 +13,26 @@ def solver():
     # R = Matriz com a posição de cada restrição
     nn, N, nm, Inc, nc, F, nr, R = importa('entrada.xls')
 
-    xs, kg, gauss_matrix = rigidez(nm, Inc, N, nn, R, F)
+    plota(N, Inc)
+
+    xs, kg, elementos = rigidez(nm, Inc, N, nn, R, F, nr)
     
-    apoios = R
+    apoios, u = apoio(R, nr, nn, kg, xs)
 
-    for a in range(nr):
-        r = int(R[a][0])
-        xs = np.insert(xs, r, 0, 0)
+    deform = deformacao(u, elementos)
 
-    for i in range(0, nr):
-        a = int(R[i][0])
-        for x in range(0, nn*2):
-            apoios[i] += xs[x]*kg[a][x]
+    tens = tensao(deform, elementos)
 
-    print(apoios)
+    interns = internas(tens, elementos)
 
-    print(xs)
+    novos = novos_nos(N, u)
 
-    
+    plota(novos, Inc)
 
-    #plota(N, Inc)
+    new_xs = np.zeros((len(xs), 1))
+    for i in range(len(xs)):
+        new_xs[i][0] = xs[i]
+
+    geraSaida("saida", apoios, new_xs, deform, interns, tens)
 
 solver()

@@ -220,7 +220,7 @@ def jacobi(ite, tol, K, F):
 
     return xs, contador
 
-def rigidez(nm, Inc, N, nn, R, F):
+def rigidez(nm, Inc, N, nn, R, F, nr):
     import math
     import numpy as np
 
@@ -331,18 +331,79 @@ def rigidez(nm, Inc, N, nn, R, F):
 
     xs, contador = gauss(3000, 1e-7, gauss_matrix, gauss_forces)
 
-    return xs, kg, gauss_matrix
-
-def apoio(R, nr, nn, kg):
-    import numpy as np
-
-    apoios = R
-
     for a in range(nr):
         r = int(R[a][0])
         xs = np.insert(xs, r, 0, 0)
+
+    return xs, kg, elementos
+
+def apoio(R, nr, nn, kg, xs):
+    import numpy as np
+
+    apoios = R
 
     for i in range(0, nr):
         a = int(R[i][0])
         for x in range(0, nn*2):
             apoios[i] += xs[x]*kg[a][x]
+
+    return apoios, xs
+
+def deformacao(xs, elementos):
+    import numpy as np
+
+    deform = np.zeros((len(elementos), 1))
+    
+    for i in range(len(elementos)):
+        n1 = int(elementos[str(i+1)]["INCIDENCIA"][0:1])
+        n2 = int(elementos[str(i+1)]["INCIDENCIA"][4:5])
+
+        u_n1 = xs[(n1 - 1)*2]
+        u_n2 = xs[(n2 - 1)*2]
+        v_n1 = xs[(n1*2)-1]
+        v_n2 = xs[(n2*2)-1]
+
+        l = elementos[str(i+1)]["TAMANHO"]
+        cos = elementos[str(i+1)]["COS"]
+        sen = elementos[str(i+1)]["SEN"]
+
+        d = (-cos*u_n1 - sen*v_n1 + cos*u_n2 + sen*v_n2)/l
+
+        deform[i] = d
+
+    return deform
+
+def tensao(deforms, elementos):
+    import numpy as np
+
+    tens = np.zeros((len(elementos), 1))
+
+    for i in range(len(deforms)):
+        youngs = int(elementos[str(i+1)]["YOUNG"])
+        tens[i] = deforms[i]*youngs
+
+    return tens
+
+def internas(tens, elementos):
+    import numpy as np
+
+    interns = np.zeros((len(elementos), 1))
+
+    for i in range(len(elementos)):
+        area = float(elementos[str(i+1)]["AREA"])
+
+        interns[i] = tens[i]*area
+
+    return interns
+
+def novos_nos(N, u):
+
+    novos = N
+    
+    rows, cols = N.shape
+
+    for c in range(cols):
+        for r in range(rows):
+            novos[r][c] += u[c*rows + r]
+
+    return novos
