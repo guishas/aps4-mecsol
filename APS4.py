@@ -13,7 +13,21 @@ def solver():
     # R = Matriz com a posição de cada restrição
     nn, N, nm, Inc, nc, F, nr, R = importa('entrada.xls')
 
-    xs = rigidez(nm, Inc, N, nn, R, F)
+    xs, kg, gauss_matrix = rigidez(nm, Inc, N, nn, R, F)
+    
+    apoios = R
+
+    for a in range(nr):
+        r = int(R[a][0])
+        xs = np.insert(xs, r, 0, 0)
+
+    for i in range(0, nr):
+        a = int(R[i][0])
+        for x in range(0, nn*2):
+            apoios[i] += xs[x]*kg[a][x]
+
+    print(apoios)
+
     print(xs)
 
     

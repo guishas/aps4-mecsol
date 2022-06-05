@@ -331,4 +331,18 @@ def rigidez(nm, Inc, N, nn, R, F):
 
     xs, contador = gauss(3000, 1e-7, gauss_matrix, gauss_forces)
 
-    return xs
+    return xs, kg, gauss_matrix
+
+def apoio(R, nr, nn, kg):
+    import numpy as np
+
+    apoios = R
+
+    for a in range(nr):
+        r = int(R[a][0])
+        xs = np.insert(xs, r, 0, 0)
+
+    for i in range(0, nr):
+        a = int(R[i][0])
+        for x in range(0, nn*2):
+            apoios[i] += xs[x]*kg[a][x]
